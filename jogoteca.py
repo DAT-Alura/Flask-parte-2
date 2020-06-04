@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, session, flash, url_for
+from flask import Flask, render_template, request, redirect, session, flash, url_for, send_from_directory
 from flask_pymongo import PyMongo
+import os
 
 from dao import JogoDao, UsuarioDao
 from models import Jogo, Usuario
@@ -7,15 +8,16 @@ from models import Jogo, Usuario
 app = Flask(__name__)
 app.secret_key = 'daniel'
 app.config["MONGO_URI"] = "mongodb://localhost:27017/jogoteca"
+app.config["UPLOAD_PATH"] = os.path.dirname(os.path.abspath(__file__)) + '/uploads'
 mongo = PyMongo(app)
 
-jogo_dao = JogoDao(mongo.db.jogo)
-usuario_dao = UsuarioDao(mongo.db.usuario)
+JOGO_DAO = JogoDao(mongo.db.jogo)
+USUARIO_DAO = UsuarioDao(mongo.db.usuario)
 
 
 @app.route('/')
 def index():
-    jogos = jogo_dao.listar()
+    jogos = JOGO_DAO.listar()
     return render_template('lista.html', titulo='Jogos', jogos=jogos)
 
 
@@ -31,8 +33,11 @@ def criar():
     nome = request.form['nome']
     categoria = request.form['categoria']
     console = request.form['console']
-    jogo = Jogo(nome, categoria, console)
-    jogo_dao.salvar(jogo)
+    jogo = JOGO_DAO.salvar(Jogo(nome, categoria, console))
+    if request.files['arquivo']:
+        arquivo = request.files['arquivo']
+        upload_path = app.config['UPLOAD_PATH']
+        arquivo.save(f'{upload_path}/{jogo.id}.jpg')
     return redirect(url_for('index'))
 
 
@@ -40,8 +45,8 @@ def criar():
 def editar(id):
     if 'usuario_logado' not in session or session['usuario_logado'] == None:
         return redirect(url_for('login', proxima=url_for('editar', id=id)))
-    jogo = jogo_dao.busca_por_id(id)
-    return render_template('editar.html', titulo='Editar', jogo=jogo)
+    jogo = JOGO_DAO.busca_por_id(id)
+    return render_template('editar.html', titulo='Editar', jogo=jogo, nome_arquivo=f'{id}.jpg')
 
 
 @app.route('/atualizar', methods=['POST'])
@@ -51,13 +56,13 @@ def atualizar():
     categoria = request.form['categoria']
     console = request.form['console']
     jogo = Jogo(nome, categoria, console, id)
-    jogo_dao.salvar(jogo)
+    JOGO_DAO.salvar(jogo)
     return redirect(url_for('index'))
 
 
 @app.route('/deletar/<string:id>')
 def deletar(id):
-    jogo_dao.deletar(id)
+    JOGO_DAO.deletar(id)
     flash('O jogo foi removido com sucesso!')
     return redirect(url_for('index'))
 
@@ -70,7 +75,7 @@ def login():
 
 @app.route('/autenticar', methods=['POST'])
 def autenticar():
-    usuario = usuario_dao.busca_por_id(request.form['id'])
+    usuario = USUARIO_DAO.busca_por_id(request.form['id'])
     if usuario != None and request.form['senha'] == usuario['senha']:
         session['usuario_logado'] = usuario['id']
         flash(usuario['nome'] + ' logou com sucesso!')
@@ -85,6 +90,11 @@ def logout():
     flash(session['usuario_logado'] + ' foi deslogado!')
     session['usuario_logado'] = None
     return redirect(url_for('index'))
+
+
+@app.route('/uploads/<string:nome_arquivo>')
+def imagem(nome_arquivo):
+    return send_from_directory('uploads', nome_arquivo)
 
 
 app.run(debug=True, port=8080)

@@ -16,9 +16,10 @@ class JogoDao:
                 }}
             )
         else:
-            self.tabela.insert_one({
+            response = self.tabela.insert_one({
                 'nome': jogo.nome, 'categoria': jogo.categoria, 'console': jogo.console
             })
+            jogo.id = response.inserted_id
         return jogo
 
     def listar(self):
