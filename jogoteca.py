@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, flash, url_for, send_from_directory
 from flask_pymongo import PyMongo
 import os
+import time
 
 from dao import JogoDao, UsuarioDao
 from models import Jogo, Usuario
@@ -8,7 +9,7 @@ from models import Jogo, Usuario
 app = Flask(__name__)
 app.secret_key = 'daniel'
 app.config["MONGO_URI"] = "mongodb://localhost:27017/jogoteca"
-app.config["UPLOAD_PATH"] = os.path.dirname(os.path.abspath(__file__)) + '/uploads'
+app.config["UPLOAD_PATH"] = f'{os.path.dirname(os.path.abspath(__file__))}/uploads'
 mongo = PyMongo(app)
 
 JOGO_DAO = JogoDao(mongo.db.jogo)
@@ -37,7 +38,8 @@ def criar():
     if request.files['arquivo']:
         arquivo = request.files['arquivo']
         upload_path = app.config['UPLOAD_PATH']
-        arquivo.save(f'{upload_path}/{jogo.id}.jpg')
+        timestamp = time.time()
+        arquivo.save(f'{upload_path}/{jogo.id}-{timestamp}.jpg')
     return redirect(url_for('index'))
 
 
@@ -46,7 +48,8 @@ def editar(id):
     if 'usuario_logado' not in session or session['usuario_logado'] == None:
         return redirect(url_for('login', proxima=url_for('editar', id=id)))
     jogo = JOGO_DAO.busca_por_id(id)
-    return render_template('editar.html', titulo='Editar', jogo=jogo, nome_arquivo=f'{id}.jpg')
+    nome_arquivo = recupera_arquivo(id)
+    return render_template('editar.html', titulo='Editar', jogo=jogo, nome_arquivo=nome_arquivo)
 
 
 @app.route('/atualizar', methods=['POST'])
@@ -57,6 +60,12 @@ def atualizar():
     console = request.form['console']
     jogo = Jogo(nome, categoria, console, id)
     JOGO_DAO.salvar(jogo)
+    if request.files['arquivo']:
+        arquivo = request.files['arquivo']
+        upload_path = app.config['UPLOAD_PATH']
+        timestamp = time.time()
+        deleta_arquivo(jogo.id)
+        arquivo.save(f'{upload_path}/{jogo.id}-{timestamp}.jpg')
     return redirect(url_for('index'))
 
 
@@ -95,6 +104,17 @@ def logout():
 @app.route('/uploads/<string:nome_arquivo>')
 def imagem(nome_arquivo):
     return send_from_directory('uploads', nome_arquivo)
+
+
+def recupera_arquivo(id):
+    for nome_arquivo in os.listdir(app.config['UPLOAD_PATH']):
+        if id in nome_arquivo:
+            return nome_arquivo
+
+
+def deleta_arquivo(id):
+    arquivo = recupera_arquivo(id)
+    os.remove(os.path.join(app.config['UPLOAD_PATH'], arquivo))
 
 
 app.run(debug=True, port=8080)
