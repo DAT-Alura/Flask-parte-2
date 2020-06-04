@@ -1,3 +1,5 @@
+from flask_pymongo import ObjectId
+
 from models import Jogo, Usuario
 
 
@@ -6,11 +8,12 @@ class JogoDao:
         self.tabela = tabela
 
     def salvar(self, jogo):
-        jogoExiste = self.tabela.find_one({'nome': jogo.nome})
-        if jogoExiste != None:
+        if jogo.id != None:
             self.tabela.update_one(
-                {'nome': jogo.nome},
-                {'$set': {'categoria': jogo.categoria, 'console': jogo.console}}
+                {'_id': ObjectId(jogo.id)},
+                {'$set': {
+                    'nome': jogo.nome, 'categoria': jogo.categoria, 'console': jogo.console
+                }}
             )
         else:
             self.tabela.insert_one({
@@ -21,11 +24,11 @@ class JogoDao:
     def listar(self):
         return self.tabela.find()
 
-    def busca_por_id(self, nome):
-        return self.tabela.find_one({'nome': nome})
+    def busca_por_id(self, id):
+        return self.tabela.find_one({'_id': ObjectId(id)})
 
-    def deletar(self, nome):
-        return self.tabela.delete_one({'nome': nome})
+    def deletar(self, id):
+        return self.tabela.delete_one({'_id': ObjectId(id)})
 
 
 class UsuarioDao:

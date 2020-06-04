@@ -6,21 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Jogoteca</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='/font-awesome-4.7.0/css/font-awesome.min.css') }}">
 </head>
 
 <body>
     <div class="container">
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul id="messages" class="list-unstyled">
-            {% for message in messages %}
-            <li class="alert alert-success">{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-        {% endwith %}
         <div class="page-header">
-            <h1>{{ titulo }}</h1>
+            <h1 class="pt-3">{{ titulo }}</h1>
+            <hr>
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <ul id="messages" class="list-unstyled my-2">
+                {% for message in messages %}
+                <li class="alert alert-success">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
         </div>
         {% block conteudo %}{% endblock %}
     </div>
